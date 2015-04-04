@@ -1,0 +1,11 @@
+{
+	"device": "/dev/spidev0.1",
+	"nodename": "MAPI",
+	"gateway": true,
+	"location": {
+		"gps": false,
+		"latitude": 0.1,
+		"longitude": 0.1,
+		"altitude": 100
+	}
+}
