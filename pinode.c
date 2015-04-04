@@ -9,15 +9,15 @@
 
 #include <stdint.h>
 #include <unistd.h>
-#include <stdio.h>
+//#include <stdio.h>
 #include <stdlib.h>
-#include <getopt.h>
 #include <fcntl.h>
 #include <sys/ioctl.h>
-#include <linux/types.h>
+//#include <linux/types.h>
 #include <linux/spi/spidev.h>
-
 #include <jansson.h>
+#include "RFM69.h"
+#include "RFM69Config.h"
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
 
@@ -27,7 +27,7 @@ static void pabort(const char *s)
 	abort();
 }
 
-int get_spi_state(int fd){
+void get_spi_state(int fd){
 	int ret=0;
 	uint8_t mode;
 	uint8_t bits = 8;
@@ -65,7 +65,7 @@ int get_spi_state(int fd){
 	printf("bits per word: %d\n", bits);
 	printf("max speed: %d Hz (%d KHz)\n", speed, speed/1000);
 }
-static uint16_t delay;
+//static uint16_t delay;
 
 /*
 static void transfer(int fd)
@@ -111,7 +111,7 @@ int main(int argc, char *argv[]) {
 	fp_json = fopen("config.json", "r");
 	if (fp_json == NULL){
 		perror("Failed to open config file");
-		exit -1;
+		exit(-1);
 	}
 
 	/* Read the json into a useful structure */
@@ -121,7 +121,7 @@ int main(int argc, char *argv[]) {
 	if (config == NULL){
 		perror("Failed to parse the json config file");
 		fprintf(stderr, "json error: %d %d %d\n%s\n", err.line, err.column, err.position, err.text);
-		exit -1;
+		exit(-1);
 	}
 
 
@@ -133,7 +133,7 @@ int main(int argc, char *argv[]) {
 		device=json_string_value(jdev);;
 	} else {
 		perror("Can't read device name from config file\n");
-		exit -1;
+		exit(-1);
 	}
 	
 	fprintf(stdout,"Opening SPI Device on %s\n", device);
@@ -142,7 +142,7 @@ int main(int argc, char *argv[]) {
 	fd = open(device, O_RDWR);
 	if (fd < 0){
 		perror("can't open device\n");
-		exit -1;
+		exit(-1);
 	}
 	/* If we're not going to use device anymore we should decref it
 	 * json_decref(jdev);
