@@ -4,7 +4,7 @@
  * This used the jansson json library, to install use:
  *   Rasbian: sudo apt-get install libjansson-dev
  *
- * Compile with: gcc -o pinode pinode.c -ljansson
+ * Compile with: gcc -o pinode pinode.c -ljansson -Wall
  */
 
 #include <stdint.h>
@@ -27,35 +27,59 @@ static void pabort(const char *s)
 	abort();
 }
 
-void get_spi_state(int fd){
+void spi_set_mode(int fd, uint8_t mode){
 	int ret=0;
-	uint8_t mode;
-	uint8_t bits = 8;
-	uint32_t speed = 500000;
-
-	// spi mode
-	//ret = ioctl(fd, SPI_IOC_WR_MODE, &mode);
-	//if (ret == -1)
-	//	pabort("can't set spi mode");
+	ret = ioctl(fd, SPI_IOC_WR_MODE, &mode);
+	if (ret == -1)
+		perror("can't set spi mode(wr)");
 
 	ret = ioctl(fd, SPI_IOC_RD_MODE, &mode);
 	if (ret == -1)
-		pabort("can't get spi mode");
+		perror("can't get spi mode(rd)");
 
-	/* bits per word */
-	//ret = ioctl(fd, SPI_IOC_WR_BITS_PER_WORD, &bits);
-	//if (ret == -1)
-	//	pabort("can't set bits per word");
+	printf("spi mode: %d\n", mode);
+
+}
+
+void spi_set_bits(int fd, uint8_t bits){
+	int ret=0;
+	ret = ioctl(fd, SPI_IOC_WR_BITS_PER_WORD, &bits);
+	if (ret == -1)
+		perror("can't set bits per word");
 
 	ret = ioctl(fd, SPI_IOC_RD_BITS_PER_WORD, &bits);
 	if (ret == -1)
-		pabort("can't get bits per word");
+		perror("can't get bits per word");
 
+	printf("bits per word: %d\n", bits);
+}
 
-	/* max speed hz */
-	//ret = ioctl(fd, SPI_IOC_WR_MAX_SPEED_HZ, &speed);
-	//if (ret == -1)
-	//	pabort("can't set max speed hz");
+void spi_set_speed(int fd, uint32_t speed){
+	int ret=0;
+	ret = ioctl(fd, SPI_IOC_WR_MAX_SPEED_HZ, &speed);
+	if (ret == -1)
+		perror("can't set max speed hz");
+
+	ret = ioctl(fd, SPI_IOC_RD_MAX_SPEED_HZ, &speed);
+	if (ret == -1)
+		perror("can't get max speed hz");
+
+	printf("max speed: %d Hz (%d KHz)\n", speed, speed/1000);
+}
+void get_spi_state(int fd){
+	int ret=0;
+
+	uint8_t mode;
+	uint8_t bits;
+	uint32_t speed;
+
+	ret = ioctl(fd, SPI_IOC_RD_MODE, &mode);
+	if (ret == -1)
+		perror("can't get spi mode(rd)");
+
+	ret = ioctl(fd, SPI_IOC_RD_BITS_PER_WORD, &bits);
+	if (ret == -1)
+		perror("can't get bits per word");
 
 	ret = ioctl(fd, SPI_IOC_RD_MAX_SPEED_HZ, &speed);
 	if (ret == -1)
@@ -124,7 +148,6 @@ int main(int argc, char *argv[]) {
 		exit(-1);
 	}
 
-
 	json_t *jdev;
 	jdev = json_object_get(config, "device");
 	
@@ -149,6 +172,13 @@ int main(int argc, char *argv[]) {
 	 */
 
 	get_spi_state(fd);
+	spi_set_mode(fd,SPI_MODE_0);	/* SPI Mode */
+	spi_set_bits(fd,8);		/* Bits per word */
+	//SPI.setBitOrder(MSBFIRST);
+	spi_set_speed(fd,500000);	/* Clock Speed (similar to SPI_CLOCK_DIV2 on Arduino */
+
+	get_spi_state(fd);
+	
 
 	//transfer(fd);
 
