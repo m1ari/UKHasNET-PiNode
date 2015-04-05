@@ -4,8 +4,8 @@
 	"gateway": true,
 	"location": {
 		"gps": false,
-		"latitude": 0.1,
-		"longitude": 0.1,
+		"latitude": 50.944190,
+		"longitude": -1.40550,
 		"altitude": 100
 	}
 }
