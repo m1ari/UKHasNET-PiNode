@@ -10,6 +10,7 @@
 #include <stdint.h>
 #include <unistd.h>
 //#include <stdio.h>
+#include <string.h>
 #include <stdlib.h>
 #include <fcntl.h>
 #include <sys/ioctl.h>
@@ -20,12 +21,6 @@
 #include "RFM69Config.h"
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
-
-static void pabort(const char *s)
-{
-	perror(s);
-	abort();
-}
 
 void spi_set_mode(int fd, uint8_t mode){
 	int ret=0;
@@ -40,6 +35,10 @@ void spi_set_mode(int fd, uint8_t mode){
 	printf("spi mode: %d\n", mode);
 
 }
+
+//SPI_IOC_RD_MODE32, SPI_IOC_WR_MODE32
+
+//SPI_IOC_RD_LSB_FIRST, SPI_IOC_WR_LSB_FIRST
 
 void spi_set_bits(int fd, uint8_t bits){
 	int ret=0;
@@ -66,7 +65,7 @@ void spi_set_speed(int fd, uint32_t speed){
 
 	printf("max speed: %d Hz (%d KHz)\n", speed, speed/1000);
 }
-void get_spi_state(int fd){
+void spi_get_state(int fd){
 	int ret=0;
 
 	uint8_t mode;
@@ -83,13 +82,40 @@ void get_spi_state(int fd){
 
 	ret = ioctl(fd, SPI_IOC_RD_MAX_SPEED_HZ, &speed);
 	if (ret == -1)
-		pabort("can't get max speed hz");
+		perror("can't get max speed hz");
 
 	printf("spi mode: %d\n", mode);
 	printf("bits per word: %d\n", bits);
 	printf("max speed: %d Hz (%d KHz)\n", speed, speed/1000);
 }
 //static uint16_t delay;
+
+int spi_transfer (int fd, uint8_t *data, int len) {
+  struct spi_ioc_transfer spi ;
+	int i;
+	printf("SPI Sending:  ");
+	for (i=0; i<len; i++)
+		printf("%02X ", data[i]);
+	printf("\n");
+
+	memset (&spi, 0, sizeof (spi)) ;
+
+	spi.tx_buf        = (unsigned long)data ;
+	spi.rx_buf        = (unsigned long)data ;
+	spi.len           = len ;
+	spi.delay_usecs   = 0 ;
+	spi.speed_hz      = 0 ;
+	spi.bits_per_word = 0 ;
+
+	int ret= ioctl (fd, SPI_IOC_MESSAGE(1), &spi) ;
+
+	printf("SPI Recieved: ");
+	for (i=0; i<len; i++)
+		printf("%02X ", data[i]);
+	printf("\n");
+
+	return ret;
+}
 
 /*
 static void transfer(int fd)
@@ -126,6 +152,26 @@ static void transfer(int fd)
 	puts("");
 }
 */
+
+uint8_t spi_read(int fd, uint8_t reg){
+	uint8_t buffer[2];
+	buffer[0] = reg & ~RFM69_SPI_WRITE_MASK;	// Ensure the write mask is off
+	buffer[1] = 0;
+
+	spi_transfer(fd, buffer, ARRAY_SIZE(buffer)); // Send the address with the write mask off
+	return buffer[1];
+}
+void spi_write(int fd, uint8_t reg, uint8_t val){
+	uint8_t buffer[2];
+	buffer[0] = reg | RFM69_SPI_WRITE_MASK;	// Set the write mask
+	buffer[1] = val;
+
+	spi_transfer(fd, buffer,ARRAY_SIZE(buffer)); // Send the address with the write mask on
+}
+
+void rfm69_setmode(int fd, uint8_t mode){
+    spi_write(fd, RFM69_REG_01_OPMODE, (spi_read(fd,RFM69_REG_01_OPMODE) & 0xE3) | mode);
+}
 
 int main(int argc, char *argv[]) {
 
@@ -171,16 +217,49 @@ int main(int argc, char *argv[]) {
 	 * json_decref(jdev);
 	 */
 
-	get_spi_state(fd);
+	spi_get_state(fd);
 	spi_set_mode(fd,SPI_MODE_0);	/* SPI Mode */
 	spi_set_bits(fd,8);		/* Bits per word */
 	//SPI.setBitOrder(MSBFIRST);
 	spi_set_speed(fd,500000);	/* Clock Speed (similar to SPI_CLOCK_DIV2 on Arduino */
 
-	get_spi_state(fd);
-	
+	spi_get_state(fd);
 
-	//transfer(fd);
+	// Set RFM69 Settings
+	uint8_t i;
+	for (i = 0; CONFIG[i][0] != 255; i++)
+		spi_write(fd,CONFIG[i][0], CONFIG[i][1]);
+
+
+	printf("Version: %02X\n", spi_read(fd, 0x10));
+
+	rfm69_setmode(fd,RFM69_MODE_RX);
+
+
+	char string[65];
+	snprintf(string,65,"3aL50.944190,-1.40550T19[MAPI]");
+
+	uint8_t buffer[67];
+	buffer[0] = 0x80; // Fifo mode
+	buffer[1] = strlen(string);
+	memcpy(&buffer[2],string,65);
+
+	// Send Packet
+	rfm69_setmode(fd, RFM69_MODE_TX);
+	uint8_t val;
+	while(!(spi_read(fd, RFM69_REG_27_IRQ_FLAGS1) & RF_IRQFLAGS1_TXREADY)) { };
+/*
+	while(1){
+		val=spi_read(fd, RFM69_REG_27_IRQ_FLAGS1);
+		printf("Reg27 Wait: Got %02X want %02X\n", val,RF_IRQFLAGS1_TXREADY);
+		if (val & RF_IRQFLAGS1_TXREADY)
+			break;
+	}
+*/
+	spi_transfer(fd,buffer,buffer[1]+2);
+	while(!(spi_read(fd,RFM69_REG_28_IRQ_FLAGS2) & RF_IRQFLAGS2_PACKETSENT)) { };
+
+	rfm69_setmode(fd,RFM69_MODE_RX);
 
 	close(fd);
 	json_decref(config);
