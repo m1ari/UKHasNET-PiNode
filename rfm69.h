@@ -15,8 +15,7 @@ class rfm69 {
 		uint8_t getVer();
 		void setMode(uint8_t mode);
 		float readTemp();
-
-
+		bool checkrx();
 
 	private:
 		spi s;

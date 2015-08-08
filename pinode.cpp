@@ -191,28 +191,30 @@ int main(int argc, char *argv[]) {
 	rfm69.setMode(RFM69_MODE_RX);
 	
 	char string[65];
-	uint8_t rfm_temp=0;
+	float rfm_temp=0;
 	//uint8_t buffer[67];
 	while (loop){
 		memset (string, 0, sizeof(string)) ;
 
 		// TODO Spend some time waiting for a packet  timeout at ~60 seconds
+		//if rf69.checkrx()
 
+		// rf69.recv(buf, &len)
 
 		// If timed out create our own packet
 
 		// Read the Temperature
-		uint8_t temp=rfm69.readTemp();
-		std::cout << "Read Temperature " << (int)temp << std::endl;
+		float temp=rfm69.readTemp();
+		std::cout << "Read Temperature " << (float)temp << std::endl;
 		if (255 != temp)
 			rfm_temp = temp;
 
 		// TODO: with some casts we should be able to combine these
 		// Create String
 		if (('a' == seq) || ('z' == seq))  {
-			snprintf(string,65,"3%cL%sT%d[%s]",seq,location,rfm_temp,nodename);
+			snprintf(string,65,"3%cL%sT%.1f[%s]",seq,location,rfm_temp,nodename);
 		} else {
-			snprintf(string,65,"3%cT%d[%s]",seq,rfm_temp,nodename);
+			snprintf(string,65,"3%cT%.1f[%s]",seq,rfm_temp,nodename);
 		}
 
 		if ('z' == seq++)
@@ -223,6 +225,7 @@ int main(int argc, char *argv[]) {
 		rfm69.bulkWrite(string);
 
 		rfm69.setMode(RFM69_MODE_RX);
+		// rf69.SetLnaMode(RF_TESTLNA_SENSITIVE);
 
 		// Pause a while - This may be redundant when we have RX code
 		int timer=55;

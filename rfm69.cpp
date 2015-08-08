@@ -85,28 +85,29 @@ void rfm69::setMode(uint8_t mode){
 }
 
 float rfm69::readTemp() {
-    uint8_t oldMode = _mode;
+	// Set mode into Standby (required for temperature measurement)
+	uint8_t oldMode = _mode;
+	setMode(RFM69_MODE_STDBY);
 
-    // Set mode into Standby (required for temperature measurement)
-    setMode(RFM69_MODE_STDBY);
+	// Trigger Temperature Measurement
+	write(RFM69_REG_4E_TEMP1, RF_TEMP1_MEAS_START);
+
+	// Wait for reading to be ready
+	while (read(RFM69_REG_4E_TEMP1) & RF_TEMP1_MEAS_RUNNING);
+
+	// Read raw ADC value
+	uint8_t rawTemp = read(RFM69_REG_4F_TEMP2);
 	
-    // Trigger Temperature Measurement
-    write(RFM69_REG_4E_TEMP1, RF_TEMP1_MEAS_START);
-    // Check Temperature Measurement has started
-    if(!(RF_TEMP1_MEAS_RUNNING && read(RFM69_REG_4E_TEMP1))){
-        return 255.0;
-    }
-    // Wait for Measurement to complete
-    while(RF_TEMP1_MEAS_RUNNING && read(RFM69_REG_4E_TEMP1)) { };
-    // Read raw ADC value
-    uint8_t rawTemp = read(RFM69_REG_4F_TEMP2);
-	
-    // Set transceiver back to original mode
-    setMode(oldMode);
-    // Return processed temperature value
-    return 168.3-float(rawTemp);
+	// Set transceiver back to original mode
+	setMode(oldMode);
+
+	// Return processed temperature value
+	//return 168.3-float(rawTemp);
+	return float(rawTemp) - 90.0;
 }
 
+bool rfm69::checkrx(){
+}
 
 
 #if 0
