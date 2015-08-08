@@ -8,7 +8,9 @@
 
 class spi {
 	public:
+		spi();
 		spi(std::string dev);
+		void setDevice(std::string dev);
 		void open();
 		void close();
 		void setMode(uint8_t mode);
@@ -16,9 +18,7 @@ class spi {
 		void setSpeed(uint32_t speed);
 		void getState();
 		int transfer (uint8_t *data, int len);
-		uint8_t read(uint8_t reg);
-		void write(uint8_t reg, uint8_t val);
-		int getFD();		// Bodge until we've sorted out other code
+		//int getFD();		// Bodge until we've sorted out other code
 
 	private:
 		int fd;

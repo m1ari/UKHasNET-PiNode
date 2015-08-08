@@ -9,11 +9,15 @@
 #include <linux/spi/spidev.h>
 #include <cstdio>
 
-#define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
-
-#define RFM69_SPI_WRITE_MASK 0x80
+spi::spi(){
+}
 
 spi::spi(std::string dev){
+	device=dev;
+}
+
+
+void spi::setDevice(std::string dev){
 	device=dev;
 }
 
@@ -129,24 +133,8 @@ int spi::transfer (uint8_t *data, int len) {
 	return ret;
 }
 
-
-uint8_t spi::read(uint8_t reg){
-	uint8_t buffer[2];
-	buffer[0] = reg & ~RFM69_SPI_WRITE_MASK;	// Ensure the write mask is off
-	buffer[1] = 0;
-
-	transfer(buffer, ARRAY_SIZE(buffer)); // Send the address with the write mask off
-	return buffer[1];
-}
-/* Writes a single byte to a register */
-void spi::write(uint8_t reg, uint8_t val){
-	uint8_t buffer[2];
-	buffer[0] = reg | RFM69_SPI_WRITE_MASK; // Set the write mask
-	buffer[1] = val;
-
-	transfer(buffer,ARRAY_SIZE(buffer)); // Send the address with the write mask on
-}
-
+/*
 int spi::getFD(){
 	return fd;
 }
+*/

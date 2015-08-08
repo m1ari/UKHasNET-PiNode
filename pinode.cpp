@@ -14,14 +14,14 @@
 #include <string.h>
 #include <stdlib.h>
 #include <fcntl.h>
-#include <sys/ioctl.h>
+//#include <sys/ioctl.h>
 //#include <linux/types.h>
-#include <linux/spi/spidev.h>
+//#include <linux/spi/spidev.h>
 #include <jansson.h>
+#include "spi.h"
+#include "rfm69.h"
 #include "RFM69Registers.h"
 #include "RFM69Config.h"
-#include "spi.h"
-
 
 /* Options to edit are here
  * DEBUG_SPI makes it print lots of debug stuff
@@ -40,7 +40,7 @@
 #endif
 
 
-int loop=1;
+bool loop=true;
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
 
 void sig_handler(int sig){
@@ -49,12 +49,12 @@ void sig_handler(int sig){
 		case SIGHUP:
 			// Sig HUP, Do a reload
 			fprintf(stderr,"Sig: Got SIGHUP\n");
-			loop=0;
+			loop=false;
 		break;
 		case SIGINT: // 2
 			// Interupt (Ctrl c From command line) - Graceful shutdown
 			fprintf(stderr,"Sig: Got SIGINT - Shutting down\n");
-			loop=0;
+			loop=false;
 		break;
 		case 15:
 			// TERM
@@ -70,33 +70,6 @@ void sig_handler(int sig){
 		break;
 	}
 }
-/*
-
-// Reads a single byte from a register
-uint8_t spi_read(int fd, uint8_t reg){
-	uint8_t buffer[2];
-	buffer[0] = reg & ~RFM69_SPI_WRITE_MASK;	// Ensure the write mask is off
-	buffer[1] = 0;
-
-	spi_transfer(fd, buffer, ARRAY_SIZE(buffer)); // Send the address with the write mask off
-	return buffer[1];
-}
-// Writes a single byte to a register
-void spi_write(int fd, uint8_t reg, uint8_t val){
-	uint8_t buffer[2];
-	buffer[0] = reg | RFM69_SPI_WRITE_MASK;	// Set the write mask
-	buffer[1] = val;
-
-	spi_transfer(fd, buffer,ARRAY_SIZE(buffer)); // Send the address with the write mask on
-}
-
-*/
-
-/*
-void rfm69_setmode(int fd, uint8_t mode){
-    spi_write(fd, RFM69_REG_01_OPMODE, (spi_read(fd,RFM69_REG_01_OPMODE) & 0xE3) | mode);
-}
-*/
 
 int main(int argc, char *argv[]) {
 
@@ -197,49 +170,28 @@ int main(int argc, char *argv[]) {
 	
 	fprintf(stdout,"Opening SPI Device on %s\n", device);
 
-	spi spi(device);
-	spi.open();
-	
-	/*int fd;
-	fd = open(device, O_RDWR);
-	if (fd < 0){
-		perror("can't open device\n");
-		exit(-1);
-	}
-	*/
-	/* If we're not going to use device anymore we should decref it
-	 * json_decref(jdev) but only if it came from json;
-	 */
+	rfm69 rfm69(device);
+	// We may be able to json_decref(jdev) now.
 
-	spi.getState();
-	spi.setMode(SPI_MODE_0);
-	spi.setBits(8);			// Bits per word
-	//SPI.setBitOrder(MSBFIRST);
-	spi.setSpeed(500000);	// Clock Speed (similar to SPI_CLOCK_DIV2 on Arduino
-	spi.getState();
+	rfm69.init();	// Initialise the RFM69 (and SPI)
 
 	// Set RFM69 Settings
 	uint8_t i;
 	for (i = 0; CONFIG[i][0] != 255; i++)
-		spi.write(CONFIG[i][0], CONFIG[i][1]);
+		rfm69.write(CONFIG[i][0], CONFIG[i][1]);
 
-	uint8_t ver = spi.read(RFM69_REG_10_VERSION);
-	printf("RFM69 Version: %02X\n", ver);
-	if (ver != 0x24){
-		fprintf(stderr,"Version doesn't match for RFM69\n");
-		exit(-1);
-	}
-
+	rfm69.getVer();
 
 	signal(SIGHUP,sig_handler);
+	signal(SIGINT,sig_handler);
 
 /* Start main loop around here */
 	char seq='a';
-	//rfm69_setmode(fd,RFM69_MODE_RX);
-    	spi.write(RFM69_REG_01_OPMODE, (spi.read(RFM69_REG_01_OPMODE) & 0xE3) | RFM69_MODE_RX);
+	rfm69.setMode(RFM69_MODE_RX);
+	
 	char string[65];
 	//uint8_t rfm_temp;
-	uint8_t buffer[67];
+	//uint8_t buffer[67];
 	while (loop){
 		memset (string, 0, sizeof(string)) ;
 
@@ -264,27 +216,36 @@ int main(int argc, char *argv[]) {
 		printf("tx: %s\n",string);
 
 		/* Create spi buffer */
-		buffer[0] = 0x80; // Fifo mode
-		buffer[1] = strlen(string);
-		memcpy(&buffer[2],string,65);
+		//buffer[0] = 0x80; // Fifo mode
+		//buffer[1] = strlen(string);
+		//memcpy(&buffer[2],string,65);
 
 		/* Set to TX Mode */
-		//rfm69_setmode(fd, RFM69_MODE_TX);
-    		spi.write(RFM69_REG_01_OPMODE, (spi.read(RFM69_REG_01_OPMODE) & 0xE3) | RFM69_MODE_TX);
-		while(!(spi.read(RFM69_REG_27_IRQ_FLAGS1) & RF_IRQFLAGS1_TXREADY)) { };
+		//rfm69.setMode(RFM69_MODE_TX);
+		//while(!(rfm69.read(RFM69_REG_27_IRQ_FLAGS1) & RF_IRQFLAGS1_TXREADY)) { };
 
-		spi.transfer(buffer,buffer[1]+2);
-		while(!(spi.read(RFM69_REG_28_IRQ_FLAGS2) & RF_IRQFLAGS2_PACKETSENT)) { };
+		//rfm69.bulkWrite(buffer,buffer[1]+2);
+		//while(!(rfm69.read(RFM69_REG_28_IRQ_FLAGS2) & RF_IRQFLAGS2_PACKETSENT)) { };	// TODO Add a timer to the loop and quit after a while
+		rfm69.bulkWrite(string);
 
-		//rfm69_setmode(fd,RFM69_MODE_RX);
-    		spi.write(RFM69_REG_01_OPMODE, (spi.read(RFM69_REG_01_OPMODE) & 0xE3) | RFM69_MODE_RX);
+		rfm69.setMode(RFM69_MODE_RX);
 
-		sleep(55);	/* Pause for whilst we don't do receiving */
+		// Pause a while - This may be redundant when we have RX code
+		int timer=55;
+		while (loop && timer) {
+			timer--;
+			sleep(1);
+		}
 
 	}
+
+	// Ensure we don't stay TXing all the time.
+	rfm69.setMode(RFM69_MODE_RX);
+
 	//close(fd);
-	spi.close();
+	rfm69.close();
 #ifdef JSON_CONFIG
+	json_decref(jdev);	// This could probably be done earlier ...
 	json_decref(jnode);
 	json_decref(config);
 #endif

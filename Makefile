@@ -6,7 +6,7 @@ CC=g++
 LIBS=-ljansson 
 	# -lncurses -lpthread -lpqxx -lpq
 
-OBJS=spi.o pinode.o 
+OBJS=spi.o rfm69.o pinode.o
 
 TARGETS=pinode
 
