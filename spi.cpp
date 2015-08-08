@@ -43,7 +43,7 @@ void spi::setMode(uint8_t mode){
 	if (ret == -1)
 		perror("can't get spi mode(rd)");
 
-	std::cout << "spi mode: " << mode << std::endl;
+	std::cout << "spi mode: " << (int)mode << std::endl;
 
 }
 
@@ -57,7 +57,7 @@ void spi::setBits(uint8_t bits){
 	if (ret == -1)
 		perror("can't get bits per word");
 
-	std::cout << "bits per word: "<< bits << std::endl;
+	std::cout << "bits per word: "<< (int)bits << std::endl;
 }
 
 void spi::setSpeed(uint32_t speed){
@@ -70,7 +70,7 @@ void spi::setSpeed(uint32_t speed){
 	if (ret == -1)
 		perror("can't get max speed hz");
 
-	std::cout << "max speed: " << speed << " Hz (" << speed/1000 << "KHz)" << std::cout;
+	std::cout << "max speed: " << (int)speed << " Hz (" << (int)(speed/1000) << "KHz)" << std::endl;
 }
 
 void spi::getState(){
@@ -92,9 +92,10 @@ void spi::getState(){
 	if (ret == -1)
 		perror("can't get max speed hz");
 
-	std::cout << "spi mode: " << mode << std::endl;
-	std::cout << "bits per word: " << std::endl;
-	std::cout << "max speed: "<< speed << " Hz (" << speed/1000 << " KHz)" << std::endl;
+	std::cout << "Current State" << std::endl;
+	std::cout << "\tspi mode: " << (int)mode << std::endl;
+	std::cout << "\tbits per word: " << (int)bits << std::endl;
+	std::cout << "\tmax speed: "<< (int)speed << " Hz (" << (int)(speed/1000) << " KHz)" << std::endl;
 }
 
 int spi::transfer (uint8_t *data, int len) {
