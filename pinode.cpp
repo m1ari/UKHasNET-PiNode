@@ -19,6 +19,7 @@
 //#include <linux/types.h>
 //#include <linux/spi/spidev.h>
 #include <jansson.h>
+#include <curl/curl.h>
 #include "spi.h"
 #include "rfm69.h"
 #include "RFM69Registers.h"
@@ -189,10 +190,20 @@ int main(int argc, char *argv[]) {
 /* Start main loop around here */
 	char seq='a';
 	rfm69.setMode(RFM69_MODE_RX);
+	rfm69.setLnaMode(RF_TESTLNA_SENSITIVE);
 	
 	char string[65];
 	float rfm_temp=0;
 	//uint8_t buffer[67];
+
+	CURL *curl;
+	CURLcode res;
+	curl = curl_easy_init();
+
+	if(curl) {
+		curl_easy_setopt(curl, CURLOPT_URL, "http://ukhas.net/api/upload");
+	}
+
 	while (loop){
 		memset (string, 0, sizeof(string)) ;
 
@@ -203,18 +214,32 @@ int main(int argc, char *argv[]) {
 					break;
 
 				if (rfm69.checkrx()) {
-					std::cout << "Got stuff to do "<< std::endl;
-
+					//std::string rxdata = rfm69.getRX();
+					std::cout << "rx:" << rfm69.getRX() << ", RSSI: " << (int)rfm69.getRSSI() << std::endl;
+					if (curl){
+						char curlbuff[255];
+						sprintf(curlbuff,"origin=%s&data=%s&rssi=%d",nodename, rfm69.getRX().c_str(),(int)rfm69.getRSSI());
+						curl_easy_setopt(curl, CURLOPT_POSTFIELDS, curlbuff);
+ 
+						/* Perform the request, res will get the return code */ 
+						res = curl_easy_perform(curl);
+    						/* Check for errors */ 
+						if(res != CURLE_OK)
+							fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
+					}
+				
 				} else {
 					rfm69.delayMilli(50);
 				}
 			}
 		}
 
+
 		// rf69.recv(buf, &len)
 
 		// If timed out create our own packet
 
+#ifdef TX
 		// Read the Temperature
 		float temp=rfm69.readTemp();
 		std::cout << "Read Temperature " << (float)temp << std::endl;
@@ -237,8 +262,8 @@ int main(int argc, char *argv[]) {
 		rfm69.bulkWrite(string);
 
 		rfm69.setMode(RFM69_MODE_RX);
-		// rf69.SetLnaMode(RF_TESTLNA_SENSITIVE);
-
+		rfm69.setLnaMode(RF_TESTLNA_SENSITIVE);
+#endif
 		// Pause a while - This may be redundant when we have RX code
 		int timer=55;
 		while (loop && timer) {
@@ -251,6 +276,11 @@ int main(int argc, char *argv[]) {
 	// Ensure we don't stay TXing all the time.
 	rfm69.setMode(RFM69_MODE_RX);
 
+	if (curl){
+		/* always cleanup */ 
+		curl_easy_cleanup(curl);
+		curl_global_cleanup();
+	}
 	//close(fd);
 	rfm69.close();
 #ifdef JSON_CONFIG

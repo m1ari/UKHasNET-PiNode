@@ -17,7 +17,10 @@ class rfm69 {
 		void setMode(uint8_t mode);
 		float readTemp();
 		bool checkrx();
+		std::string getRX();
+		int16_t getRSSI();
 		void delayMilli(uint16_t howLong);
+		void setLnaMode(uint8_t lnaMode);
 
 	private:
 		spi s;

@@ -3,7 +3,7 @@ CFLAGS=-O2 -g -Wall -std=c++0x
 
 CC=g++
 
-LIBS=-ljansson 
+LIBS=-ljansson -lcurl
 	# -lncurses -lpthread -lpqxx -lpq
 
 OBJS=spi.o rfm69.o pinode.o

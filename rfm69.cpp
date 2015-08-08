@@ -77,7 +77,7 @@ void rfm69::bulkWrite(std::string data){
 
 uint8_t rfm69::getVer(){
 	uint8_t ver = read(RFM69_REG_10_VERSION);
-        std::cout << "RFM69 Version: 0x" << std::hex << (int)ver << std::endl;
+        std::cout << "RFM69 Version: 0x" << std::hex << (int)ver << std::dec << std::endl;
         if (ver != 0x24){
                 std::cerr << "Version doesn't match for RFM69" << std::endl;
                 exit(-1);
@@ -125,12 +125,12 @@ bool rfm69::checkrx(){
 		memset(rxbuf,0,255);
 
 		// Get packet length from first byte of FIFO
-		buflen = read(RFM69_REG_00_FIFO)+1;
+		buflen = read(RFM69_REG_00_FIFO);
 
 		// Read FIFO into our Buffer
 		bulkRead(RFM69_REG_00_FIFO, rxbuf, RFM69_FIFO_SIZE);
 
-		std::cout << "checkrx got " << rxbuf << std::endl;
+		//std::cout << "checkrx got " << (int)buflen << " bytes :" << rxbuf << std::endl;
 
 		// Read RSSI register (should be of the packet? - TEST THIS)
 		rxrssi = -(read(RFM69_REG_24_RSSI_VALUE)/2);
@@ -139,6 +139,17 @@ bool rfm69::checkrx(){
 		return true;
 		}
 	return false;
+}
+
+std::string rfm69::getRX(){
+	//std::string ret;
+	//ret=(char*)rxbuf;
+	//return ret;
+	return (char*)rxbuf;
+}
+
+int16_t rfm69::getRSSI(){
+	return rxrssi;
 }
 
 void rfm69::clearFifo() {
@@ -162,6 +173,11 @@ void rfm69::delayMilli (uint16_t howLong) {
 	}
 }
 
+void rfm69::setLnaMode(uint8_t lnaMode) {
+    // RF_TESTLNA_NORMAL (default)
+    // RF_TESTLNA_SENSITIVE
+    write(RFM69_REG_58_TEST_LNA, lnaMode);
+}
 
 
 
@@ -231,11 +247,6 @@ void RFM69::send(const uint8_t* data, uint8_t len, uint8_t power)
     }
 }
 
-void RFM69::SetLnaMode(uint8_t lnaMode) {
-    // RF_TESTLNA_NORMAL (default)
-    // RF_TESTLNA_SENSITIVE
-    spiWrite(RFM69_REG_58_TEST_LNA, lnaMode);
-}
 
 
 
