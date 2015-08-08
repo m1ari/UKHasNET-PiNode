@@ -10,6 +10,7 @@
 #include <stdint.h>
 #include <unistd.h>
 //#include <stdio.h>
+#include <signal.h>
 #include <string.h>
 #include <stdlib.h>
 #include <fcntl.h>
@@ -17,8 +18,9 @@
 //#include <linux/types.h>
 #include <linux/spi/spidev.h>
 #include <jansson.h>
-#include "RFM69.h"
+#include "RFM69Registers.h"
 #include "RFM69Config.h"
+#include "spi.h"
 
 
 /* Options to edit are here
@@ -38,112 +40,39 @@
 #endif
 
 
+int loop=1;
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
 
-void spi_set_mode(int fd, uint8_t mode){
-	int ret=0;
-	ret = ioctl(fd, SPI_IOC_WR_MODE, &mode);
-	if (ret == -1)
-		perror("can't set spi mode(wr)");
-
-	ret = ioctl(fd, SPI_IOC_RD_MODE, &mode);
-	if (ret == -1)
-		perror("can't get spi mode(rd)");
-
-	printf("spi mode: %d\n", mode);
-
-}
-
-//SPI_IOC_RD_MODE32, SPI_IOC_WR_MODE32
-
-//SPI_IOC_RD_LSB_FIRST, SPI_IOC_WR_LSB_FIRST
-
-void spi_set_bits(int fd, uint8_t bits){
-	int ret=0;
-	ret = ioctl(fd, SPI_IOC_WR_BITS_PER_WORD, &bits);
-	if (ret == -1)
-		perror("can't set bits per word");
-
-	ret = ioctl(fd, SPI_IOC_RD_BITS_PER_WORD, &bits);
-	if (ret == -1)
-		perror("can't get bits per word");
-
-	printf("bits per word: %d\n", bits);
-}
-
-void spi_set_speed(int fd, uint32_t speed){
-	int ret=0;
-	ret = ioctl(fd, SPI_IOC_WR_MAX_SPEED_HZ, &speed);
-	if (ret == -1)
-		perror("can't set max speed hz");
-
-	ret = ioctl(fd, SPI_IOC_RD_MAX_SPEED_HZ, &speed);
-	if (ret == -1)
-		perror("can't get max speed hz");
-
-	printf("max speed: %d Hz (%d KHz)\n", speed, speed/1000);
-}
-void spi_get_state(int fd){
-	int ret=0;
-
-	uint8_t mode;
-	uint8_t bits;
-	uint32_t speed;
-
-	ret = ioctl(fd, SPI_IOC_RD_MODE, &mode);
-	if (ret == -1)
-		perror("can't get spi mode(rd)");
-
-	ret = ioctl(fd, SPI_IOC_RD_BITS_PER_WORD, &bits);
-	if (ret == -1)
-		perror("can't get bits per word");
-
-	ret = ioctl(fd, SPI_IOC_RD_MAX_SPEED_HZ, &speed);
-	if (ret == -1)
-		perror("can't get max speed hz");
-
-	printf("spi mode: %d\n", mode);
-	printf("bits per word: %d\n", bits);
-	printf("max speed: %d Hz (%d KHz)\n", speed, speed/1000);
-}
-
-int spi_transfer (int fd, uint8_t *data, int len) {
-	struct spi_ioc_transfer spi ;
-	int ret;
-
-#ifdef DEBUG_SPI
-	int i;
-	printf("SPI Sending:  ");
-	for (i=0; i<len; i++)
-		printf("%02X ", data[i]);
-	printf("\n");
-#endif
-
-	memset (&spi, 0, sizeof (spi)) ;
-
-	spi.tx_buf        = (unsigned long)data ;
-	spi.rx_buf        = (unsigned long)data ;
-	spi.len           = len ;
-	//spi.delay_usecs   = 0 ;
-	//spi.speed_hz      = 0 ;
-	//spi.bits_per_word = 0 ;
-
-	ret= ioctl (fd, SPI_IOC_MESSAGE(1), &spi) ;
-	if (ret < 1){
-		perror("Error sending SPI Message");
-#ifdef DEBUG_SPI
-	} else {
-		printf("SPI Recieved: ");
-		for (i=0; i<len; i++)
-			printf("%02X ", data[i]);
-		printf("\n");
-#endif
+void sig_handler(int sig){
+	fprintf(stderr,"Got Signal %d\n",sig);
+	switch (sig){
+		case SIGHUP:
+			// Sig HUP, Do a reload
+			fprintf(stderr,"Sig: Got SIGHUP\n");
+			loop=0;
+		break;
+		case SIGINT: // 2
+			// Interupt (Ctrl c From command line) - Graceful shutdown
+			fprintf(stderr,"Sig: Got SIGINT - Shutting down\n");
+			loop=0;
+		break;
+		case 15:
+			// TERM
+			fprintf(stderr,"Sig: Got SIGTERM\n");
+		break;
+		case 16:
+			// USR1
+			fprintf(stderr,"Sig: Got SIGUSR1\n");
+		break;
+		case 17:
+			// USR2
+			fprintf(stderr,"Sig: Got SIGUSR2\n");
+		break;
 	}
-
-	return ret;
 }
+/*
 
-/* Reads a single byte from a register */
+// Reads a single byte from a register
 uint8_t spi_read(int fd, uint8_t reg){
 	uint8_t buffer[2];
 	buffer[0] = reg & ~RFM69_SPI_WRITE_MASK;	// Ensure the write mask is off
@@ -152,7 +81,7 @@ uint8_t spi_read(int fd, uint8_t reg){
 	spi_transfer(fd, buffer, ARRAY_SIZE(buffer)); // Send the address with the write mask off
 	return buffer[1];
 }
-/* Writes a single byte to a register */
+// Writes a single byte to a register
 void spi_write(int fd, uint8_t reg, uint8_t val){
 	uint8_t buffer[2];
 	buffer[0] = reg | RFM69_SPI_WRITE_MASK;	// Set the write mask
@@ -161,9 +90,13 @@ void spi_write(int fd, uint8_t reg, uint8_t val){
 	spi_transfer(fd, buffer,ARRAY_SIZE(buffer)); // Send the address with the write mask on
 }
 
+*/
+
+/*
 void rfm69_setmode(int fd, uint8_t mode){
     spi_write(fd, RFM69_REG_01_OPMODE, (spi_read(fd,RFM69_REG_01_OPMODE) & 0xE3) | mode);
 }
+*/
 
 int main(int argc, char *argv[]) {
 
@@ -255,8 +188,6 @@ int main(int argc, char *argv[]) {
 	json_decref(jloc_alt);
 	json_decref(jloc);
 
-
-
 #else
 	/* if we're not using config.json set the same variables to use the #define values */
 	static const char *device = SPI_DEV;
@@ -266,54 +197,95 @@ int main(int argc, char *argv[]) {
 	
 	fprintf(stdout,"Opening SPI Device on %s\n", device);
 
-	int fd;
+	spi spi(device);
+	spi.open();
+	
+	/*int fd;
 	fd = open(device, O_RDWR);
 	if (fd < 0){
 		perror("can't open device\n");
 		exit(-1);
 	}
+	*/
 	/* If we're not going to use device anymore we should decref it
 	 * json_decref(jdev) but only if it came from json;
 	 */
 
-	spi_get_state(fd);
-	spi_set_mode(fd,SPI_MODE_0);	/* SPI Mode */
-	spi_set_bits(fd,8);		/* Bits per word */
+	spi.getState();
+	spi.setMode(SPI_MODE_0);
+	spi.setBits(8);			// Bits per word
 	//SPI.setBitOrder(MSBFIRST);
-	spi_set_speed(fd,500000);	/* Clock Speed (similar to SPI_CLOCK_DIV2 on Arduino */
-
-	spi_get_state(fd);
+	spi.setSpeed(500000);	// Clock Speed (similar to SPI_CLOCK_DIV2 on Arduino
+	spi.getState();
 
 	// Set RFM69 Settings
 	uint8_t i;
 	for (i = 0; CONFIG[i][0] != 255; i++)
-		spi_write(fd,CONFIG[i][0], CONFIG[i][1]);
+		spi.write(CONFIG[i][0], CONFIG[i][1]);
+
+	uint8_t ver = spi.read(RFM69_REG_10_VERSION);
+	printf("RFM69 Version: %02X\n", ver);
+	if (ver != 0x24){
+		fprintf(stderr,"Version doesn't match for RFM69\n");
+		exit(-1);
+	}
 
 
-	printf("Version: %02X\n", spi_read(fd, 0x10));
+	signal(SIGHUP,sig_handler);
 
-	rfm69_setmode(fd,RFM69_MODE_RX);
-
-
+/* Start main loop around here */
+	char seq='a';
+	//rfm69_setmode(fd,RFM69_MODE_RX);
+    	spi.write(RFM69_REG_01_OPMODE, (spi.read(RFM69_REG_01_OPMODE) & 0xE3) | RFM69_MODE_RX);
 	char string[65];
-	snprintf(string,65,"3aL%sT19[%s]",location,nodename);
-
+	//uint8_t rfm_temp;
 	uint8_t buffer[67];
-	buffer[0] = 0x80; // Fifo mode
-	buffer[1] = strlen(string);
-	memcpy(&buffer[2],string,65);
+	while (loop){
+		memset (string, 0, sizeof(string)) ;
 
-	// Send Packet
-	rfm69_setmode(fd, RFM69_MODE_TX);
-	while(!(spi_read(fd, RFM69_REG_27_IRQ_FLAGS1) & RF_IRQFLAGS1_TXREADY)) { };
 
-	spi_transfer(fd,buffer,buffer[1]+2);
-	while(!(spi_read(fd,RFM69_REG_28_IRQ_FLAGS2) & RF_IRQFLAGS2_PACKETSENT)) { };
+	
+		/* TODO Spend some time waiting for a packet  timeout at ~60 seconds */
 
-	rfm69_setmode(fd,RFM69_MODE_RX);
 
-	close(fd);
+		/* If timed out create our own packet */
+
+		/* TODO: with some casts we should be able to combine these */
+		/* Create String */
+		if (('a' == seq) || ('z' == seq))  {
+			snprintf(string,65,"3%cL%sT19[%s]",seq,location,nodename);
+		} else {
+			snprintf(string,65,"3%cT19[%s]",seq,nodename);
+		}
+
+		if ('z' == seq++)
+			seq='b';
+
+		printf("tx: %s\n",string);
+
+		/* Create spi buffer */
+		buffer[0] = 0x80; // Fifo mode
+		buffer[1] = strlen(string);
+		memcpy(&buffer[2],string,65);
+
+		/* Set to TX Mode */
+		//rfm69_setmode(fd, RFM69_MODE_TX);
+    		spi.write(RFM69_REG_01_OPMODE, (spi.read(RFM69_REG_01_OPMODE) & 0xE3) | RFM69_MODE_TX);
+		while(!(spi.read(RFM69_REG_27_IRQ_FLAGS1) & RF_IRQFLAGS1_TXREADY)) { };
+
+		spi.transfer(buffer,buffer[1]+2);
+		while(!(spi.read(RFM69_REG_28_IRQ_FLAGS2) & RF_IRQFLAGS2_PACKETSENT)) { };
+
+		//rfm69_setmode(fd,RFM69_MODE_RX);
+    		spi.write(RFM69_REG_01_OPMODE, (spi.read(RFM69_REG_01_OPMODE) & 0xE3) | RFM69_MODE_RX);
+
+		sleep(55);	/* Pause for whilst we don't do receiving */
+
+	}
+	//close(fd);
+	spi.close();
 #ifdef JSON_CONFIG
+	json_decref(jnode);
 	json_decref(config);
 #endif
 	return 0;

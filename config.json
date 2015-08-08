@@ -1,11 +1,12 @@
 {
 	"device": "/dev/spidev0.1",
+	"dio0": 25,
 	"nodename": "MAPI",
 	"gateway": true,
 	"location": {
 		"gps": false,
-		"latitude": 50.944190,
-		"longitude": -1.40550,
+		"latitude": 50.944036,
+		"longitude": -1.405517,
 		"altitude": 100
 	}
 }

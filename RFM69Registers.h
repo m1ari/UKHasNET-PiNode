@@ -5,10 +5,8 @@
 // Author: Mike McCauley (mikem@open.com.au)
 // Copyright (C) 2011 Mike McCauley
 
-#ifndef RFM69_h
-#define RFM69_h
-
-#define boolean bool
+#ifndef RFM69Reg_h
+#define RFM69Reg_h
 
 #define RFM69_SPI_WRITE_MASK 0x80
 
@@ -28,11 +26,9 @@
 #define RFM69_MODE_RX       0x10 // 16mA
 #define RFM69_MODE_TX       0x0c // >33mA
 
-
 // These values we set for FIFO thresholds are actually the same as the POR values
 #define RF22_TXFFAEM_THRESHOLD 4
 #define RF22_RXFFAFULL_THRESHOLD 55
-
 
 // Register names
 
@@ -755,64 +751,4 @@
 #define RF_TESTLNA_NORMAL           0x1B  // Default
 #define RF_TESTLNA_SENSITIVE        0x2D  //
 
-#ifdef ARDUINO
-
-class RFM69
-{
-public:
-
-    /// Constructor.
-    RFM69();
-  
-    boolean        init();
-
-    uint8_t        spiRead(uint8_t reg);
-
-    void           spiWrite(uint8_t reg, uint8_t val);
-    
-    void           spiBurstRead(uint8_t reg, uint8_t* dest, uint8_t len);
-
-    void           spiBurstWrite(uint8_t reg, const uint8_t* src, uint8_t len);
-    
-    void           spiFifoWrite(const uint8_t* src, uint8_t len);
-
-    void           setMode(uint8_t mode);
-
-    uint8_t        mode();
-
-    boolean        checkRx();
-
-    void        recv(uint8_t* buf, uint8_t* len);
-    
-    void        send(const uint8_t* data, uint8_t len, uint8_t power);
-    
-    float          readTemp();
-    
-    int16_t             lastRssi();
-    
-    int16_t             sampleRssi();
-    
-    void            SetLnaMode(uint8_t lnaMode);
-    
-    void            clearFifo();
-
-protected:
-    
-
-private:
-    uint8_t             _mode;
-
-    uint8_t		_slaveSelectPin;
-
-    uint8_t             _bufLen;
-    uint8_t             _buf[RFM69_MAX_MESSAGE_LEN];
-
-    int16_t                 _lastRssi;
-};
-
-
-#endif
-
 #endif 
-
-
