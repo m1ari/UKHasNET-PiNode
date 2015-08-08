@@ -11,16 +11,24 @@ class rfm69 {
 		void close();
 		uint8_t read(uint8_t reg);
 		void write(uint8_t reg, uint8_t val);
+		void bulkRead(uint8_t reg, uint8_t *buf, uint8_t len);
 		void bulkWrite(std::string data);
 		uint8_t getVer();
 		void setMode(uint8_t mode);
 		float readTemp();
 		bool checkrx();
+		void delayMilli(uint16_t howLong);
 
 	private:
 		spi s;
+		void clearFifo();
+
 		uint8_t _mode;
 
+		// Storage to receieved strings
+		uint8_t buflen;
+		uint8_t rxbuf[255];
+		int16_t rxrssi;
 
 };
 

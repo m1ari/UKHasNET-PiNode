@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include <string>
+#include <ctime>
 #include <string.h>
 #include "spi.h"
 #include "rfm69.h"
@@ -43,6 +44,16 @@ void rfm69::write(uint8_t reg, uint8_t val){
 	buffer[1] = val;
 
 	s.transfer(buffer,ARRAY_SIZE(buffer)); // Send the address with the write mask on
+}
+
+void rfm69::bulkRead(uint8_t reg, uint8_t *buf, uint8_t len){
+	uint8_t buffer[300];
+	memset(buffer,0,300);
+
+	buffer[0]=reg & ~RFM69_SPI_WRITE_MASK;
+	
+        s.transfer(buffer,len+1);
+	memcpy(rxbuf,&buffer[1],buflen);
 }
 
 void rfm69::bulkWrite(std::string data){
@@ -107,41 +118,60 @@ float rfm69::readTemp() {
 }
 
 bool rfm69::checkrx(){
+	// Check IRQ register for payloadready flag (indicates RXed packet waiting in FIFO)
+	if(read(RFM69_REG_28_IRQ_FLAGS2) & RF_IRQFLAGS2_PAYLOADREADY) {
+
+		// Clear out existing buffer
+		memset(rxbuf,0,255);
+
+		// Get packet length from first byte of FIFO
+		buflen = read(RFM69_REG_00_FIFO)+1;
+
+		// Read FIFO into our Buffer
+		bulkRead(RFM69_REG_00_FIFO, rxbuf, RFM69_FIFO_SIZE);
+
+		std::cout << "checkrx got " << rxbuf << std::endl;
+
+		// Read RSSI register (should be of the packet? - TEST THIS)
+		rxrssi = -(read(RFM69_REG_24_RSSI_VALUE)/2);
+		// Clear the radio FIFO (found in HopeRF demo code)
+		clearFifo();
+		return true;
+		}
+	return false;
 }
+
+void rfm69::clearFifo() {
+	// Must only be called in RX Mode
+	// Apparently this works... found in HopeRF demo code
+	setMode(RFM69_MODE_STDBY);
+	setMode(RFM69_MODE_RX);
+}
+
+void rfm69::delayMilli (uint16_t howLong) {
+	/**/ if (howLong ==   0)
+		return ;
+	else {
+		struct timespec sleeper ;
+		unsigned int mSecs = howLong % 1000 ;
+		unsigned int wSecs = howLong / 1000 ;
+
+		sleeper.tv_sec  = wSecs ;
+		sleeper.tv_nsec = (long)(mSecs * 1000000L) ;
+		nanosleep (&sleeper, NULL) ;
+	}
+}
+
+
+
+
 
 
 #if 0
 
 
-void RFM69::spiBurstRead(uint8_t reg, uint8_t* dest, uint8_t len)
-{
-    digitalWrite(_slaveSelectPin, LOW);
-    
-    SPI.transfer(reg & ~RFM69_SPI_WRITE_MASK); // Send the start address with the write mask off
-    while (len--)
-        *dest++ = SPI.transfer(0);
-
-    digitalWrite(_slaveSelectPin, HIGH);
-}
 
 
-boolean RFM69::checkRx()
-{
-    // Check IRQ register for payloadready flag (indicates RXed packet waiting in FIFO)
-    if(spiRead(RFM69_REG_28_IRQ_FLAGS2) & RF_IRQFLAGS2_PAYLOADREADY) {
-        // Get packet length from first byte of FIFO
-        _bufLen = spiRead(RFM69_REG_00_FIFO)+1;
-        // Read FIFO into our Buffer
-        spiBurstRead(RFM69_REG_00_FIFO, _buf, RFM69_FIFO_SIZE);
-        // Read RSSI register (should be of the packet? - TEST THIS)
-        _lastRssi = -(spiRead(RFM69_REG_24_RSSI_VALUE)/2);
-        // Clear the radio FIFO (found in HopeRF demo code)
-        clearFifo();
-        return true;
-    }
-    
-    return false;
-}
 
 void RFM69::recv(uint8_t* buf, uint8_t* len)
 {
@@ -207,12 +237,6 @@ void RFM69::SetLnaMode(uint8_t lnaMode) {
     spiWrite(RFM69_REG_58_TEST_LNA, lnaMode);
 }
 
-void RFM69::clearFifo() {
-    // Must only be called in RX Mode
-    // Apparently this works... found in HopeRF demo code
-    setMode(RFM69_MODE_STDBY);
-    setMode(RFM69_MODE_RX);
-}
 
 
 int16_t RFM69::lastRssi() {

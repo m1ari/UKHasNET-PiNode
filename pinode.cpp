@@ -197,7 +197,19 @@ int main(int argc, char *argv[]) {
 		memset (string, 0, sizeof(string)) ;
 
 		// TODO Spend some time waiting for a packet  timeout at ~60 seconds
-		//if rf69.checkrx()
+		for (int t=0; t<=55; t++){
+			for (int m=0; m<=20; m++){
+				if (!loop)
+					break;
+
+				if (rfm69.checkrx()) {
+					std::cout << "Got stuff to do "<< std::endl;
+
+				} else {
+					rfm69.delayMilli(50);
+				}
+			}
+		}
 
 		// rf69.recv(buf, &len)
 
