@@ -14,6 +14,7 @@ class rfm69 {
 		void bulkWrite(std::string data);
 		uint8_t getVer();
 		void setMode(uint8_t mode);
+		float readTemp();
 
 
 

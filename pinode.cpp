@@ -11,6 +11,7 @@
 #include <unistd.h>
 //#include <stdio.h>
 #include <signal.h>
+#include <iostream>
 #include <string.h>
 #include <stdlib.h>
 #include <fcntl.h>
@@ -190,24 +191,28 @@ int main(int argc, char *argv[]) {
 	rfm69.setMode(RFM69_MODE_RX);
 	
 	char string[65];
-	//uint8_t rfm_temp;
+	uint8_t rfm_temp=0;
 	//uint8_t buffer[67];
 	while (loop){
 		memset (string, 0, sizeof(string)) ;
 
-
-	
-		/* TODO Spend some time waiting for a packet  timeout at ~60 seconds */
+		// TODO Spend some time waiting for a packet  timeout at ~60 seconds
 
 
-		/* If timed out create our own packet */
+		// If timed out create our own packet
 
-		/* TODO: with some casts we should be able to combine these */
-		/* Create String */
+		// Read the Temperature
+		uint8_t temp=rfm69.readTemp();
+		std::cout << "Read Temperature " << (int)temp << std::endl;
+		if (255 != temp)
+			rfm_temp = temp;
+
+		// TODO: with some casts we should be able to combine these
+		// Create String
 		if (('a' == seq) || ('z' == seq))  {
-			snprintf(string,65,"3%cL%sT19[%s]",seq,location,nodename);
+			snprintf(string,65,"3%cL%sT%d[%s]",seq,location,rfm_temp,nodename);
 		} else {
-			snprintf(string,65,"3%cT19[%s]",seq,nodename);
+			snprintf(string,65,"3%cT%d[%s]",seq,rfm_temp,nodename);
 		}
 
 		if ('z' == seq++)
@@ -215,17 +220,6 @@ int main(int argc, char *argv[]) {
 
 		printf("tx: %s\n",string);
 
-		/* Create spi buffer */
-		//buffer[0] = 0x80; // Fifo mode
-		//buffer[1] = strlen(string);
-		//memcpy(&buffer[2],string,65);
-
-		/* Set to TX Mode */
-		//rfm69.setMode(RFM69_MODE_TX);
-		//while(!(rfm69.read(RFM69_REG_27_IRQ_FLAGS1) & RF_IRQFLAGS1_TXREADY)) { };
-
-		//rfm69.bulkWrite(buffer,buffer[1]+2);
-		//while(!(rfm69.read(RFM69_REG_28_IRQ_FLAGS2) & RF_IRQFLAGS2_PACKETSENT)) { };	// TODO Add a timer to the loop and quit after a while
 		rfm69.bulkWrite(string);
 
 		rfm69.setMode(RFM69_MODE_RX);

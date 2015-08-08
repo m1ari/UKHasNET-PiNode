@@ -48,7 +48,7 @@ void rfm69::write(uint8_t reg, uint8_t val){
 void rfm69::bulkWrite(std::string data){
 	uint8_t buffer[300];
 
-	buffer[0] = 0x80; // Fifo mode
+	buffer[0] = (RFM69_REG_00_FIFO | RFM69_SPI_WRITE_MASK);	// Set FIFO mode;
 	buffer[1] = data.length();
 	memcpy(&buffer[2],data.c_str(),255);
 
@@ -60,11 +60,13 @@ void rfm69::bulkWrite(std::string data){
 
 	// Wait for the packet to be sent
 	while(!(read(RFM69_REG_28_IRQ_FLAGS2) & RF_IRQFLAGS2_PACKETSENT)) { };
+
+	setMode(RFM69_MODE_RX);
 }
 
 uint8_t rfm69::getVer(){
 	uint8_t ver = read(RFM69_REG_10_VERSION);
-        std::cout << "RFM69 Version: 0x" << std:: hex << (int)ver << std::endl;
+        std::cout << "RFM69 Version: 0x" << std::hex << (int)ver << std::endl;
         if (ver != 0x24){
                 std::cerr << "Version doesn't match for RFM69" << std::endl;
                 exit(-1);
@@ -79,8 +81,32 @@ void rfm69::setMode(uint8_t mode){
 	if (mode == RFM69_MODE_TX){
 		while(!(read(RFM69_REG_27_IRQ_FLAGS1) & RF_IRQFLAGS1_TXREADY)) { };
 	}
-	
+
 }
+
+float rfm69::readTemp() {
+    uint8_t oldMode = _mode;
+
+    // Set mode into Standby (required for temperature measurement)
+    setMode(RFM69_MODE_STDBY);
+	
+    // Trigger Temperature Measurement
+    write(RFM69_REG_4E_TEMP1, RF_TEMP1_MEAS_START);
+    // Check Temperature Measurement has started
+    if(!(RF_TEMP1_MEAS_RUNNING && read(RFM69_REG_4E_TEMP1))){
+        return 255.0;
+    }
+    // Wait for Measurement to complete
+    while(RF_TEMP1_MEAS_RUNNING && read(RFM69_REG_4E_TEMP1)) { };
+    // Read raw ADC value
+    uint8_t rawTemp = read(RFM69_REG_4F_TEMP2);
+	
+    // Set transceiver back to original mode
+    setMode(oldMode);
+    // Return processed temperature value
+    return 168.3-float(rawTemp);
+}
+
 
 
 #if 0
@@ -94,32 +120,6 @@ void RFM69::spiBurstRead(uint8_t reg, uint8_t* dest, uint8_t len)
     while (len--)
         *dest++ = SPI.transfer(0);
 
-    digitalWrite(_slaveSelectPin, HIGH);
-}
-
-void RFM69::spiBurstWrite(uint8_t reg, const uint8_t* src, uint8_t len)
-{
-    digitalWrite(_slaveSelectPin, LOW);
-    
-    SPI.transfer(reg | RFM69_SPI_WRITE_MASK); // Send the start address with the write mask on
-    while (len--)
-        SPI.transfer(*src++);
-        
-    digitalWrite(_slaveSelectPin, HIGH);
-}
-
-void RFM69::spiFifoWrite(const uint8_t* src, uint8_t len)
-{
-    digitalWrite(_slaveSelectPin, LOW);
-    
-    // Send the start address with the write mask on
-    SPI.transfer(RFM69_REG_00_FIFO | RFM69_SPI_WRITE_MASK); // Send the start address with the write mask on
-    // First byte is packet length
-    SPI.transfer(len);
-    // Then write the packet
-    while (len--)
-        SPI.transfer(*src++);
-    	
     digitalWrite(_slaveSelectPin, HIGH);
 }
 
@@ -213,29 +213,6 @@ void RFM69::clearFifo() {
     setMode(RFM69_MODE_RX);
 }
 
-float RFM69::readTemp()
-{
-    // Store current transceiver mode
-    uint8_t oldMode = _mode;
-    // Set mode into Standby (required for temperature measurement)
-    setMode(RFM69_MODE_STDBY);
-	
-    // Trigger Temperature Measurement
-    spiWrite(RFM69_REG_4E_TEMP1, RF_TEMP1_MEAS_START);
-    // Check Temperature Measurement has started
-    if(!(RF_TEMP1_MEAS_RUNNING && spiRead(RFM69_REG_4E_TEMP1))){
-        return 255.0;
-    }
-    // Wait for Measurement to complete
-    while(RF_TEMP1_MEAS_RUNNING && spiRead(RFM69_REG_4E_TEMP1)) { };
-    // Read raw ADC value
-    uint8_t rawTemp = spiRead(RFM69_REG_4F_TEMP2);
-	
-    // Set transceiver back to original mode
-    setMode(oldMode);
-    // Return processed temperature value
-    return 168.3-float(rawTemp);
-}
 
 int16_t RFM69::lastRssi() {
     return _lastRssi;
