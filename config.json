@@ -4,7 +4,8 @@
 	"nodename": "MAPI",
 	"enable_rx": true,
 	"enable_tx": true,
-	"gateway": true,
+	"enable_upload": true,
+	"enable_repeater": true,
 	"location": {
 		"gps": false,
 		"latitude": 50.944036,

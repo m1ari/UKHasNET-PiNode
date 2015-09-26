@@ -143,6 +143,30 @@ bool Config::enableTX() const{
 	return ret;
 }
 
+bool enableUpload() const{
+	json_t *jval;
+	jval = json_object_get(config, "enable_upload");
+	bool ret;
+	if (json_is_boolean(jval)){
+		ret = json_is_true(jval);
+	} else {
+		perror("Can't read enable_upload from config file\n");
+		exit(-1);
+	}
+	return ret;
+}
+bool enableRepeater() const{
+	json_t *jval;
+	jval = json_object_get(config, "enable_repeater");
+	bool ret;
+	if (json_is_boolean(jval)){
+		ret = json_is_true(jval);
+	} else {
+		perror("Can't read enable_repeater from config file\n");
+		exit(-1);
+	}
+	return ret;
+}
 
 /* if we're not using config.json set the same variables to use the #define values */
 /*
