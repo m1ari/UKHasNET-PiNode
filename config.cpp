@@ -143,7 +143,7 @@ bool Config::enableTX() const{
 	return ret;
 }
 
-bool enableUpload() const{
+bool Config::enableUpload() const{
 	json_t *jval;
 	jval = json_object_get(config, "enable_upload");
 	bool ret;
@@ -155,7 +155,7 @@ bool enableUpload() const{
 	}
 	return ret;
 }
-bool enableRepeater() const{
+bool Config::enableRepeater() const{
 	json_t *jval;
 	jval = json_object_get(config, "enable_repeater");
 	bool ret;
