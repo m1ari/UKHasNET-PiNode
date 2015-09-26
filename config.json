@@ -2,6 +2,8 @@
 	"device": "/dev/spidev0.1",
 	"dio0": 25,
 	"nodename": "MAPI",
+	"enable_rx": true,
+	"enable_tx": true,
 	"gateway": true,
 	"location": {
 		"gps": false,
