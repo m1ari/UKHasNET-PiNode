@@ -32,6 +32,8 @@
 
 //#define DEBUG_SPI	// Debug SPI stuffs
 #define JSON_CONFIG	// Config is in config.json
+#define RX		// Enable receiving packets
+#define TX		// enable sending packets
 
 /* If you disabled JSON_CONFIG then set values here
  */
@@ -190,7 +192,8 @@ int main(int argc, char *argv[]) {
 /* Start main loop around here */
 	char seq='a';
 	rfm69.setMode(RFM69_MODE_RX);
-	rfm69.setLnaMode(RF_TESTLNA_SENSITIVE);
+	//rfm69.setLnaMode(RF_TESTLNA_SENSITIVE);
+	rfm69.setLnaMode(RF_TESTLNA_NORMAL);
 	
 	char string[65];
 	float rfm_temp=0;
@@ -207,6 +210,7 @@ int main(int argc, char *argv[]) {
 	while (loop){
 		memset (string, 0, sizeof(string)) ;
 
+#ifdef RX
 		// TODO Spend some time waiting for a packet  timeout at ~60 seconds
 		for (int t=0; t<=55; t++){
 			for (int m=0; m<=20; m++){
@@ -233,7 +237,7 @@ int main(int argc, char *argv[]) {
 				}
 			}
 		}
-
+#endif
 
 		// rf69.recv(buf, &len)
 
@@ -264,13 +268,14 @@ int main(int argc, char *argv[]) {
 		rfm69.setMode(RFM69_MODE_RX);
 		rfm69.setLnaMode(RF_TESTLNA_SENSITIVE);
 #endif
+#ifndef RX
 		// Pause a while - This may be redundant when we have RX code
 		int timer=55;
 		while (loop && timer) {
 			timer--;
 			sleep(1);
 		}
-
+#endif
 	}
 
 	// Ensure we don't stay TXing all the time.
