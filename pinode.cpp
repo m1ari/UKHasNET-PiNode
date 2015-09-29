@@ -107,75 +107,64 @@ int main(int argc, char *argv[]) {
 		curl_easy_setopt(curl, CURLOPT_URL, "http://ukhas.net/api/upload");
 	}
 
+	// Get time
+	time_t start = 0 ;
 	while (loop){
 		memset (string, 0, sizeof(string)) ;
 
 		if (conf.enableRX()) {
-			// TODO Spend some time waiting for a packet  timeout at ~60 seconds
-			for (int t=0; t<=55; t++){
-				for (int m=0; m<=20; m++){
-					if (!loop)
-						break;
-	
-					if (rfm69.checkrx()) {
-						//std::string rxdata = rfm69.getRX();
-						std::cout << "rx:" << rfm69.getRX() << ", RSSI: " << (int)rfm69.getRSSI() << std::endl;
-						if (curl){
-							char curlbuff[255];
-							sprintf(curlbuff,"origin=%s&data=%s&rssi=%d",nodename, rfm69.getRX().c_str(),(int)rfm69.getRSSI());
-							curl_easy_setopt(curl, CURLOPT_POSTFIELDS, curlbuff);
- 	
-							/* Perform the request, res will get the return code */ 
-							res = curl_easy_perform(curl);
-    							/* Check for errors */ 
-							if(res != CURLE_OK)
-								fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
-						}
-					
-					} else {
-						rfm69.delayMilli(50);
-					}
+			if (rfm69.checkrx()) {
+				//std::string rxdata = rfm69.getRX();
+				std::cout << "rx:" << rfm69.getRX() << ", RSSI: " << (int)rfm69.getRSSI() << std::endl;
+				if (curl){
+					char curlbuff[255];
+					sprintf(curlbuff,"origin=%s&data=%s&rssi=%d",nodename, rfm69.getRX().c_str(),(int)rfm69.getRSSI());
+					curl_easy_setopt(curl, CURLOPT_POSTFIELDS, curlbuff);
+
+					/* Perform the request, res will get the return code */ 
+					res = curl_easy_perform(curl);
+    					/* Check for errors */ 
+					if(res != CURLE_OK)
+						fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
 				}
+			
 			}
 		}
-
-		// rf69.recv(buf, &len)
 
 		// If timed out create our own packet
 
 		if (conf.enableTX()){
-			// Read the Temperature
-			float temp=rfm69.readTemp();
-			std::cout << "Read Temperature " << (float)temp << std::endl;
-			if (255 != temp)
-				rfm_temp = temp;
+			if (time(NULL) > (start + 62)){
+				// Read the Temperature
+				float temp=rfm69.readTemp();
+				std::cout << "Read Temperature " << (float)temp << std::endl;
+				if (255 != temp)
+					rfm_temp = temp;
 	
-			// TODO: with some casts we should be able to combine these
-			// Create String
-			if (('a' == seq) || ('z' == seq))  {
-				snprintf(string,65,"3%cL%sT%.1f[%s]",seq,location.c_str(),rfm_temp,nodename);
-			} else {
-				snprintf(string,65,"3%cT%.1f[%s]",seq,rfm_temp,nodename);
-			}
+				// TODO: with some casts we should be able to combine these
+				// Create String
+				if (('a' == seq) || ('z' == seq))  {
+					snprintf(string,65,"3%cL%sT%.1f[%s]",seq,location.c_str(),rfm_temp,nodename);
+				} else {
+					snprintf(string,65,"3%cT%.1f[%s]",seq,rfm_temp,nodename);
+				}
 	
-			if ('z' == seq++)
-				seq='b';
+				if ('z' == seq++)
+					seq='b';
 	
-			printf("tx: %s\n",string);
+				printf("tx: %s\n",string);
 	
-			rfm69.bulkWrite(string);
+				rfm69.bulkWrite(string);
 	
-			rfm69.setMode(RFM69_MODE_RX);
-			rfm69.setLnaMode(RF_TESTLNA_SENSITIVE);
-		}
-		if (conf.enableRX()) {
-			// Pause a while - This may be redundant when we have RX code
-			int timer=55;
-			while (loop && timer) {
-				timer--;
-				sleep(1);
+				rfm69.setMode(RFM69_MODE_RX);
+				//rfm69.setLnaMode(RF_TESTLNA_SENSITIVE);
+				rfm69.setLnaMode(RF_TESTLNA_NORMAL);
+				start = time(NULL);
 			}
 		}
+
+		// Put a short delay in so it's not just polling all the time
+		rfm69.delayMilli(100);
 	}
 
 	// Ensure we don't stay TXing all the time.
