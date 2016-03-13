@@ -4,7 +4,7 @@
 #include <cstring>
 #include <iostream>
 #include <fcntl.h>
-//#include <unistd.h>
+#include <unistd.h>
 #include <sys/ioctl.h>
 #include <linux/spi/spidev.h>
 #include <cstdio>
