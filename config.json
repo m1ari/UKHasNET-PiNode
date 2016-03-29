@@ -2,6 +2,7 @@
 	"device": "/dev/spidev0.1",
 	"dio0": 25,
 	"nodename": "MAPI",
+	"tx_frequency": 65,
 	"enable_rx": true,
 	"enable_tx": true,
 	"enable_upload": true,

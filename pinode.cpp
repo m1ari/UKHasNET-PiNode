@@ -134,7 +134,7 @@ int main(int argc, char *argv[]) {
 		// If timed out create our own packet
 
 		if (conf.enableTX()){
-			if (time(NULL) > (start + 62)){
+			if ((unsigned)time(NULL) > (start + conf.getTXFreq() )){
 				// Read the Temperature
 				float temp=rfm69.readTemp();
 				std::cout << "Read Temperature " << (float)temp << std::endl;

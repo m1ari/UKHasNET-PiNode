@@ -118,6 +118,19 @@ std::string Config::getLocation() const{
 	return std::string(location);
 }
 
+unsigned int Config::getTXFreq() const{
+	json_t *jval;
+	jval = json_object_get(config, "tx_frequency");
+	unsigned int ret;
+	if (json_is_integer(jval)){
+		ret = json_integer_value(jval);
+	} else {
+		perror("Can't read tx_frequency from config file\n");
+		exit(-1);
+	}
+	return ret;
+}
+
 bool Config::enableRX() const{
 	json_t *jval;
 	jval = json_object_get(config, "enable_rx");

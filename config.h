@@ -19,6 +19,7 @@ class Config {
 	const char* getDevice() const;
 	const char* getNodename() const;
 	std::string getLocation() const;
+	unsigned int getTXFreq() const;
 	bool enableRX() const;
 	bool enableTX() const;
 	bool enableUpload() const;
